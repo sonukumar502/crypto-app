@@ -1,0 +1,3 @@
+/* small helpers alongside Tailwind */
+:root{--bg:#0b1220}
+html,body,#root{height:100%;}
