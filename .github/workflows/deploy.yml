@@ -1,8 +1,13 @@
 name: Build and deploy to GitHub Pages
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 on:
   push:
-    branches: [ main ]
+    branches: [ main, code ]
 
 jobs:
   build-and-deploy:
@@ -26,3 +31,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
+        env:
+          # Optional: configure committer name/email
+          ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
