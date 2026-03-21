@@ -16,6 +16,8 @@ root.render(
 // Register service worker (optional; simple cache)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
+    // register service worker relative to the app base (works on GitHub Pages)
+    const swUrl = `${import.meta.env.BASE_URL}sw.js`
+    navigator.serviceWorker.register(swUrl).catch(() => {})
   })
 }
