@@ -5,7 +5,7 @@ export const CryptoContext = createContext()
 const DEFAULT_SETTINGS = {
   currency: 'usd',
   theme: 'dark',
-  refresh: 60
+  refresh: 10
 }
 
 export function CryptoProvider({ children }){

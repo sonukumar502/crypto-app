@@ -4,7 +4,7 @@ const API = 'https://api.coingecko.com/api/v3'
 
 // Simple caching layer: map key -> {ts, data}
 const cache = new Map()
-const TTL = 60 * 1000 // 60s
+const TTL = 10 * 1000 // 10s
 
 function cachedFetch(url){
   const now = Date.now()

@@ -14,7 +14,7 @@ export default function CoinTable({onOpenCoin, onToggleWatch}){
     let mounted = true
     setLoading(true)
     getMarkets({per_page:50}).then(data => { if(mounted){ setCoins(data); setLoading(false)} }).catch(()=> setLoading(false))
-    const id = setInterval(() => getMarkets({per_page:50}).then(d => mounted && setCoins(d)), 60000)
+  const id = setInterval(() => getMarkets({per_page:50}).then(d => mounted && setCoins(d)), 10000)
     return ()=>{ mounted=false; clearInterval(id) }
   }, [])
 
