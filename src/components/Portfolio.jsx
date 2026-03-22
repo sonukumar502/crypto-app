@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useContext } from 'react'
 import useCoinGecko from '../hooks/useCoinGecko'
 import { currency } from '../utils/formatters'
 import { Pie } from 'react-chartjs-2'
 import Chart from 'chart.js/auto'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/useAuthStore'
+import { CryptoContext } from '../context/CryptoContext'
 
 export default function Portfolio({onOpenCoin}){
   const { user } = useAuthStore()
@@ -12,6 +13,7 @@ export default function Portfolio({onOpenCoin}){
   const { simplePrice } = useCoinGecko()
   const [prices, setPrices] = useState({})
   const [form, setForm] = useState({id:'', quantity:'', buyPrice:''})
+  const { settings } = useContext(CryptoContext)
 
   // 1. Load Portfolio from Supabase Cloud
   useEffect(() => {
@@ -34,22 +36,25 @@ export default function Portfolio({onOpenCoin}){
   useEffect(() => {
     const ids = portfolio.map(p=>p.id)
     if(ids.length===0) return setPrices({})
-    simplePrice(ids, 'usd', true).then(setPrices).catch(()=>{})
-  }, [portfolio.map(p=>p.id).join(',')])
+    let mounted = true
+    setPrices({})
+    simplePrice(ids, settings.currency, true).then(d => mounted && setPrices(d)).catch(()=>{})
+    return () => { mounted = false }
+  }, [portfolio.map(p=>p.id).join(','), settings.currency])
 
   const totalValue = useMemo(() => {
     return portfolio.reduce((s, p) => {
-      const price = prices[p.id]?.usd ?? 0
+      const price = prices[p.id]?.[settings.currency] ?? 0
       return s + (p.quantity * price)
     }, 0)
-  }, [portfolio, prices])
+  }, [portfolio, prices, settings.currency])
 
   const chartData = useMemo(() => {
     return {
       labels: portfolio.map(p=>p.id),
-      datasets: [{ data: portfolio.map(p => (prices[p.id]?.usd ?? 0) * p.quantity), backgroundColor: portfolio.map((_,i)=>[`#7c3aed`,`#06b6d4`,`#f97316`,`#ef4444`,`#10b981`][i%5]) }]
+      datasets: [{ data: portfolio.map(p => (prices[p.id]?.[settings.currency] ?? 0) * p.quantity), backgroundColor: portfolio.map((_,i)=>[`#7c3aed`,`#06b6d4`,`#f97316`,`#ef4444`,`#10b981`][i%5]) }]
     }
-  }, [portfolio, prices])
+  }, [portfolio, prices, settings.currency])
 
   async function addEntry(){
     if(!form.id || !form.quantity || !user) return
@@ -80,7 +85,7 @@ export default function Portfolio({onOpenCoin}){
     if(portfolio.length===0) return
     const headers = ['id','quantity','buyPrice','currentPrice','value']
     const rows = portfolio.map(p => {
-      const current = prices[p.id]?.usd ?? 0
+      const current = prices[p.id]?.[settings.currency] ?? 0
       const value = current * p.quantity
       return [p.id, p.quantity, p.buyPrice, current, value]
     })
@@ -98,17 +103,17 @@ export default function Portfolio({onOpenCoin}){
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2 bg-slate-800 rounded p-4">
         <h3 className="font-semibold mb-3">Portfolio</h3>
-        <div className="mb-3 text-sm text-slate-400">Total Value: {currency(totalValue)}</div>
+        <div className="mb-3 text-sm text-slate-400">Total Value: {currency(totalValue, settings.currency)}</div>
         <div className="space-y-2">
-          {portfolio.length===0 ? <div className="text-slate-400">Add your first coin to the portfolio.</div> : portfolio.map(p => {
-            const current = prices[p.id]?.usd ?? 0
+          {portfolio.length===0 ? <div className="text-slate-400">Add your first coin to the portfolio.</div> : Object.keys(prices).length === 0 ? <div className="text-slate-400 text-center py-4">CoinGecko API rate limit reached. Please wait 1-2 minutes.</div> : portfolio.map(p => {
+            const current = prices[p.id]?.[settings.currency] ?? 0
             const value = current * p.quantity
             const profit = p.buyPrice ? ((current - p.buyPrice) / p.buyPrice) * 100 : 0
             return (
               <div key={p.dbId} className="flex items-center justify-between p-2 bg-slate-900 rounded border border-slate-700">
                 <div className="cursor-pointer" onClick={()=>onOpenCoin(p.id)}>{p.id}</div>
                 <div className="text-right">
-                  <div>{currency(value)}</div>
+                  <div>{currency(value, settings.currency)}</div>
                   <div className={`text-sm ${profit>=0? 'text-green-400':'text-red-400'}`}>{profit ? profit.toFixed(2) + '%' : '-'}</div>
                 </div>
                 <div>

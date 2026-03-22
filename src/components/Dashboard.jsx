@@ -9,7 +9,8 @@ export default function Dashboard({onOpenCoin}){
   const { settings } = useContext(CryptoContext)
   const { user } = useAuthStore()
   
-  const firstName = user?.user_metadata?.first_name || 'Trader'
+  const rawFirstName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || 'Trader'
+  const firstName = rawFirstName.split(' ')[0]
   const lastName = user?.user_metadata?.last_name || ''
 
   return (
@@ -25,7 +26,7 @@ export default function Dashboard({onOpenCoin}){
           <div className="bg-slate-800 rounded p-4"> 
             <h3 className="font-semibold mb-2">Quick Stats</h3>
             <div className="text-sm text-slate-400">Currency: {settings.currency.toUpperCase()}</div>
-            <div className="text-sm text-slate-400">Auto-refresh: {settings.refresh}s</div>
+            <div className="text-sm text-slate-400">Auto-refresh: 60s</div>
           </div>
 
           <div className="bg-slate-800 rounded p-4">

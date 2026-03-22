@@ -7,20 +7,39 @@ const getFakeEmail = (username) => {
   return `${safeString}@cryptotrackerapp.com`;
 };
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
   session: null,
   user: null,
   loading: true,
+  watchlist: [],
   
   initialize: async () => {
     // Get initial session
     const { data: { session } } = await supabase.auth.getSession();
-    set({ session, user: session?.user || null, loading: false });
+    const wl = session?.user?.user_metadata?.watchlist || [];
+    set({ session, user: session?.user || null, loading: false, watchlist: wl });
 
     // Listen for changes
     supabase.auth.onAuthStateChange((_event, session) => {
-      set({ session, user: session?.user || null });
+      const wl = session?.user?.user_metadata?.watchlist || [];
+      set({ session, user: session?.user || null, watchlist: wl });
     });
+  },
+
+  addWatchlist: async (id) => {
+    const state = get();
+    if(!id || !state.user || state.watchlist.includes(id)) return;
+    const newList = [...state.watchlist, id];
+    set({ watchlist: newList });
+    await supabase.auth.updateUser({ data: { watchlist: newList } });
+  },
+
+  removeWatchlist: async (id) => {
+    const state = get();
+    if(!state.user) return;
+    const newList = state.watchlist.filter(x => x !== id);
+    set({ watchlist: newList });
+    await supabase.auth.updateUser({ data: { watchlist: newList } });
   },
 
   signUp: async (username, password, firstName, lastName) => {
