@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useContext } from 'react'
 import useCoinGecko from '../hooks/useCoinGecko'
 import { currency, pct } from '../utils/formatters'
+import { CryptoContext } from '../context/CryptoContext'
 
 export default function CoinTable({onOpenCoin, onToggleWatch}){
   const { getMarkets } = useCoinGecko()
+  const { settings } = useContext(CryptoContext)
   const [coins, setCoins] = useState([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
@@ -13,10 +15,11 @@ export default function CoinTable({onOpenCoin, onToggleWatch}){
   useEffect(() => {
     let mounted = true
     setLoading(true)
-    getMarkets({per_page:50}).then(data => { if(mounted){ setCoins(data); setLoading(false)} }).catch(()=> setLoading(false))
-  const id = setInterval(() => getMarkets({per_page:50}).then(d => mounted && setCoins(d)), 10000)
+    setCoins([]) // Prevent mismatched old numbers with new symbols if API rate-limits
+    getMarkets({per_page:50, vs_currency: settings.currency}).then(data => { if(mounted){ setCoins(data); setLoading(false)} }).catch(()=> {if(mounted) setLoading(false)})
+  const id = setInterval(() => getMarkets({per_page:50, vs_currency: settings.currency}).then(d => mounted && setCoins(d)), 60000)
     return ()=>{ mounted=false; clearInterval(id) }
-  }, [])
+  }, [settings.currency])
 
   // Debounce search input by 300ms to reduce renders and API pressure
   useEffect(() => {
@@ -37,12 +40,12 @@ export default function CoinTable({onOpenCoin, onToggleWatch}){
 
   return (
     <div className="bg-slate-800 rounded p-4">
-      <div className="flex items-center justify-between mb-3">
-        <input placeholder="Search" value={q} onChange={e=>setQ(e.target.value)} className="bg-slate-700 px-3 py-2 rounded w-60" />
-        <div className="space-x-2">
-          <button onClick={()=>setSort({key:'current_price', dir: sort.dir==='asc'?'desc':'asc'})} className="px-2 py-1 bg-slate-700 rounded">Sort Price</button>
-          <button onClick={()=>setSort({key:'price_change_percentage_24h', dir: sort.dir==='asc'?'desc':'asc'})} className="px-2 py-1 bg-slate-700 rounded">Sort 24h</button>
-          <button onClick={()=>setSort({key:'market_cap', dir: sort.dir==='asc'?'desc':'asc'})} className="px-2 py-1 bg-slate-700 rounded">Sort MCap</button>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-3">
+        <input placeholder="Search" value={q} onChange={e=>setQ(e.target.value)} className="bg-slate-700 px-3 py-2 rounded w-full md:w-60" />
+        <div className="flex flex-wrap gap-2">
+          <button onClick={()=>setSort({key:'current_price', dir: sort.dir==='asc'?'desc':'asc'})} className="px-2 py-1 bg-slate-700 rounded text-xs md:text-sm">Sort Price</button>
+          <button onClick={()=>setSort({key:'price_change_percentage_24h', dir: sort.dir==='asc'?'desc':'asc'})} className="px-2 py-1 bg-slate-700 rounded text-xs md:text-sm">Sort 24h</button>
+          <button onClick={()=>setSort({key:'market_cap', dir: sort.dir==='asc'?'desc':'asc'})} className="px-2 py-1 bg-slate-700 rounded text-xs md:text-sm">Sort MCap</button>
         </div>
       </div>
 
@@ -50,7 +53,7 @@ export default function CoinTable({onOpenCoin, onToggleWatch}){
         <div className="p-6 text-center">Loading...</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full table-auto text-sm">
+          <table className="w-full table-auto text-sm whitespace-nowrap">
             <thead>
               <tr className="text-left text-slate-400">
                 <th className="p-2">#</th>
@@ -64,6 +67,13 @@ export default function CoinTable({onOpenCoin, onToggleWatch}){
               </tr>
             </thead>
             <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="text-center py-8 text-slate-400">
+                    {q ? 'No coins match your search.' : 'No data loaded. CoinGecko API rate limit reached! Please wait 1-2 minutes for the free tier to unlock.'}
+                  </td>
+                </tr>
+              )}
               {filtered.map((c, i) => (
                 <tr key={c.id} className="border-t border-slate-700 hover:bg-slate-900">
                   <td className="p-2">{c.market_cap_rank}</td>
@@ -76,11 +86,11 @@ export default function CoinTable({onOpenCoin, onToggleWatch}){
                       </div>
                     </div>
                   </td>
-                  <td className="p-2">{currency(c.current_price)}</td>
+                  <td className="p-2">{currency(c.current_price, settings.currency)}</td>
                   <td className={`p-2 ${c.price_change_percentage_24h>0?'text-green-400':'text-red-400'}`}>{pct(c.price_change_percentage_24h)}</td>
                   <td className={`p-2 ${c.price_change_percentage_7d_in_currency>0?'text-green-400':'text-red-400'}`}>{c.price_change_percentage_7d_in_currency ? pct(c.price_change_percentage_7d_in_currency) : '-'}</td>
-                  <td className="p-2">{currency(c.market_cap)}</td>
-                  <td className="p-2">{currency(c.total_volume)}</td>
+                  <td className="p-2">{currency(c.market_cap, settings.currency)}</td>
+                  <td className="p-2">{currency(c.total_volume, settings.currency)}</td>
                   <td className="p-2">
                     <button onClick={() => onToggleWatch && onToggleWatch(c.id)} className="px-2 py-1 bg-slate-700 rounded">Watch</button>
                   </td>
